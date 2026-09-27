@@ -26,6 +26,8 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_GOOGLE_THINKING_LEVEL":   "google_thinking_level",
     "TRADINGAGENTS_OPENAI_REASONING_EFFORT": "openai_reasoning_effort",
     "TRADINGAGENTS_ANTHROPIC_EFFORT":        "anthropic_effort",
+    # Home market preset (see MARKET_PRESETS below), e.g. "india".
+    "TRADINGAGENTS_MARKET":                  "market",
 }
 
 
@@ -69,7 +71,66 @@ def _apply_env_overrides(config: dict) -> dict:
     return config
 
 
-DEFAULT_CONFIG = _apply_env_overrides({
+# Market-sensitive defaults for the "global" (US-centric) market. A preset only
+# replaces a key whose value still equals the one here, so an explicit setting
+# always wins over the preset.
+_GLOBAL_MARKET = {
+    "global_news_queries": [
+        "Federal Reserve interest rates inflation",
+        "S&P 500 earnings GDP economic outlook",
+        "geopolitical risk trade war sanctions",
+        "ECB Bank of England BOJ central bank policy",
+        "oil commodities supply chain energy",
+    ],
+    "reddit_subreddits": ["wallstreetbets", "stocks", "investing"],
+    "macro_indicator_hints": [
+        "cpi", "core_pce", "unemployment", "fed_funds_rate", "10y_treasury", "yield_curve",
+    ],
+    "default_exchange_suffix": None,
+}
+
+MARKET_PRESETS = {
+    "global": {},
+    "india": {
+        "global_news_queries": [
+            "RBI monetary policy repo rate inflation India",
+            "Nifty Sensex FII DII flows Indian stock market",
+            "SEBI regulation India markets",
+            "rupee INR crude oil India economy",
+            "India GDP union budget fiscal policy",
+            "Federal Reserve interest rates global markets",
+        ],
+        "reddit_subreddits": ["IndianStreetBets", "IndiaInvestments", "IndianStockMarket"],
+        # India series on FRED, plus the US rates that drive FII flows and the rupee.
+        "macro_indicator_hints": [
+            "india_cpi", "india_10y_yield", "india_3m_interbank", "india_call_money_rate",
+            "usd_inr", "fed_funds_rate", "10y_treasury",
+        ],
+        # Bare symbols are NSE listings; type a .BO suffix for BSE.
+        "default_exchange_suffix": ".NS",
+    },
+}
+
+
+def apply_market_preset(config: dict) -> dict:
+    """Return a copy of ``config`` with its ``market`` preset applied.
+
+    Only keys still at their global default are replaced, so a value the caller
+    set explicitly is kept. An unknown market raises ``ValueError``.
+    """
+    market = (config.get("market") or "global").strip().lower()
+    if market not in MARKET_PRESETS:
+        raise ValueError(
+            f"Unknown market {config.get('market')!r}; choose one of {sorted(MARKET_PRESETS)}"
+        )
+    applied = {**config, "market": market}
+    for key, value in MARKET_PRESETS[market].items():
+        if applied.get(key, _GLOBAL_MARKET[key]) == _GLOBAL_MARKET[key]:
+            applied[key] = list(value) if isinstance(value, list) else value
+    return applied
+
+
+DEFAULT_CONFIG = apply_market_preset(_apply_env_overrides({
     "results_dir": os.getenv("TRADINGAGENTS_RESULTS_DIR") or os.path.join(_TRADINGAGENTS_HOME, "logs"),
     "data_cache_dir": os.getenv("TRADINGAGENTS_CACHE_DIR") or os.path.join(_TRADINGAGENTS_HOME, "cache"),
     "memory_log_path": os.getenv("TRADINGAGENTS_MEMORY_LOG_PATH") or os.path.join(_TRADINGAGENTS_HOME, "memory", "trading_memory.md"),
@@ -123,13 +184,18 @@ DEFAULT_CONFIG = _apply_env_overrides({
     "global_news_lookback_days": 7,       # macro news lookback window
     # Search queries used by get_global_news for macro headlines. Extend or
     # replace to broaden geographic / sector coverage.
-    "global_news_queries": [
-        "Federal Reserve interest rates inflation",
-        "S&P 500 earnings GDP economic outlook",
-        "geopolitical risk trade war sanctions",
-        "ECB Bank of England BOJ central bank policy",
-        "oil commodities supply chain energy",
-    ],
+    "global_news_queries": list(_GLOBAL_MARKET["global_news_queries"]),
+    # Home market. "global" keeps the US-centric defaults; "india" applies the
+    # MARKET_PRESETS["india"] values to every market-sensitive key below that
+    # was not customized (news queries, subreddits, macro hints, ticker suffix).
+    "market": "global",
+    # Subreddits the sentiment analyst searches for ticker discussion.
+    "reddit_subreddits": list(_GLOBAL_MARKET["reddit_subreddits"]),
+    # Macro aliases the news analyst is pointed at (see vendors/fred.py).
+    "macro_indicator_hints": list(_GLOBAL_MARKET["macro_indicator_hints"]),
+    # Exchange suffix added to a bare ticker (e.g. ".NS" makes RELIANCE ->
+    # RELIANCE.NS). None leaves tickers as typed.
+    "default_exchange_suffix": None,
     # Data vendor configuration
     # Category-level configuration (default for all tools in category).
     # The configured value is the exact vendor chain — requests are NOT silently
@@ -170,4 +236,4 @@ DEFAULT_CONFIG = _apply_env_overrides({
         ".SA":  "^BVSP",       # B3 Brazil (Ibovespa)
         "":     "SPY",         # default for US-listed tickers (no suffix)
     },
-})
+}))

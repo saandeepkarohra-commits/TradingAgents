@@ -23,8 +23,9 @@ from pathlib import Path
 
 from tradingagents.agents.rating import RATING_REVIEW
 from tradingagents.dataflows.date_window import get_current_date
-from tradingagents.dataflows.symbols import safe_ticker_component
+from tradingagents.dataflows.symbols import safe_ticker_component, with_exchange_suffix
 from tradingagents.decision_log import TradingMemoryLog
+from tradingagents.default_config import apply_market_preset
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 
 logger = logging.getLogger(__name__)
@@ -149,6 +150,10 @@ def run_backtest(
                   "memory_log_path": str(run_dir / "trading_memory.md")}
 
     graph = TradingAgentsGraph(selected_analysts, config=run_config)
+    # Resolve as propagate() does, up front, so skipped cells and settlement
+    # match the symbol the log records (RELIANCE -> RELIANCE.NS under india).
+    suffix = apply_market_preset(config).get("default_exchange_suffix")
+    tickers = [with_exchange_suffix(t, suffix) for t in tickers]
     result = BacktestResult(run_id=run_id, log_path=Path(run_config["memory_log_path"]))
     done = {(e["ticker"], e["date"]) for e in graph.memory_log.load_entries()}
 

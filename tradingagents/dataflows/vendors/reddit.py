@@ -30,7 +30,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from tradingagents.dataflows.date_window import coverage_gap, in_window
-from tradingagents.dataflows.symbols import crypto_base
+from tradingagents.dataflows.symbols import social_search_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -257,9 +257,10 @@ def fetch_reddit_posts(
     flag per post and a note line that heads the block. It runs before the
     per-subreddit cut, so the posts it keeps fill the slots.
     """
-    # Crypto reaches us as a Yahoo pair (BTC-USD); search Reddit for the base
-    # ("BTC") so the query actually matches discussion instead of near-nothing.
-    ticker = crypto_base(ticker) or ticker
+    # Crypto reaches us as a Yahoo pair (BTC-USD) and Indian stocks with an
+    # exchange suffix (RELIANCE.NS); search Reddit for the bare symbol ("BTC",
+    # "RELIANCE") so the query actually matches discussion instead of near-nothing.
+    ticker = social_search_symbol(ticker)
     subreddits = list(subreddits)
     label = ", ".join(f"r/{s}" for s in subreddits)
     fetched = _fetch_subreddit_rss(ticker, "+".join(subreddits), _FEED_PAGE, timeout)

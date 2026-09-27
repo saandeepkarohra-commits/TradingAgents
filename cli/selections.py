@@ -33,6 +33,7 @@ from cli.prompts import (
     select_research_depth,
     select_shallow_thinking_agent,
 )
+from tradingagents.dataflows.symbols import with_exchange_suffix
 from tradingagents.default_config import DEFAULT_CONFIG
 
 
@@ -101,6 +102,12 @@ def _prompt_selections(prefs):
         )
     )
     selected_ticker = get_ticker()
+    suffix = DEFAULT_CONFIG.get("default_exchange_suffix")
+    if suffix:
+        resolved = with_exchange_suffix(selected_ticker, suffix)
+        if resolved != selected_ticker:
+            console.print(f"[green]Using {DEFAULT_CONFIG['market']} listing:[/green] {resolved}")
+        selected_ticker = resolved
     asset_type = detect_asset_type(selected_ticker)
     # Only announce when it's not the default stock path, to avoid printing
     # "stock" on every run.

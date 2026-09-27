@@ -76,6 +76,13 @@ MACRO_SERIES = {
     "consumer_sentiment": "UMCSENT",
     "housing_starts": "HOUST",
     "retail_sales": "RSAFS",
+    # India (OECD / Fed H.10 series carried by FRED)
+    "india_cpi": "INDCPIALLMINMEI",
+    "india_10y_yield": "INDIRLTLT01STM",
+    "india_3m_interbank": "INDIR3TIB01STM",
+    "india_call_money_rate": "IRSTCI01INM156N",
+    "usd_inr": "DEXINUS",
+    "inr_usd": "DEXINUS",
 }
 
 

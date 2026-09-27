@@ -209,6 +209,18 @@ TradingAgents works with any market Yahoo Finance covers, using the exchange-suf
 - China A-shares: Shanghai `.SS`, Shenzhen `.SZ` (e.g. `600519.SS` for Kweichow Moutai)
 - Crypto: `BTC-USD`, `ETH-USD`
 
+#### Indian market preset
+
+Set `TRADINGAGENTS_MARKET=india` in `.env` (or `config["market"] = "india"` in Python) to focus a run on India:
+
+- Bare symbols are NSE listings: `RELIANCE` runs as `RELIANCE.NS`. Type `.BO` for BSE (`TCS.BO`). `NIFTY`, `SENSEX` and `BANKNIFTY` resolve to their indices. Under this preset, analyze a US stock by switching the market back to `global`.
+- Returns are measured against Nifty 50 (`.NS`) or Sensex (`.BO`).
+- Global news searches cover RBI policy, FII/DII flows, SEBI, the rupee and the Union Budget, plus the Fed.
+- The Sentiment Analyst searches r/IndianStreetBets, r/IndiaInvestments and r/IndianStockMarket for the bare symbol.
+- The News Analyst is pointed at India series on FRED (`india_cpi`, `india_10y_yield`, `india_3m_interbank`, `india_call_money_rate`, `usd_inr`) alongside US rates. These need `FRED_API_KEY`.
+
+Any of these keys set explicitly (`global_news_queries`, `reddit_subreddits`, `macro_indicator_hints`, `default_exchange_suffix`) wins over the preset.
+
 <p align="center">
   <img src="assets/cli/cli_init.png" width="100%" style="display: inline-block; margin: 0 2%;">
 </p>

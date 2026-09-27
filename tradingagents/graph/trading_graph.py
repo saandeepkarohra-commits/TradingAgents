@@ -10,9 +10,9 @@ from tradingagents.agents.context import build_instrument_context, resolve_instr
 from tradingagents.agents.rating import parse_rating
 from tradingagents.dataflows.config import run_config, set_config
 from tradingagents.dataflows.date_window import get_current_date
-from tradingagents.dataflows.symbols import safe_ticker_component
+from tradingagents.dataflows.symbols import safe_ticker_component, with_exchange_suffix
 from tradingagents.decision_log import TradingMemoryLog
-from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.default_config import DEFAULT_CONFIG, apply_market_preset
 from tradingagents.llm_clients import build_llm_kwargs, create_llm_client
 from tradingagents.reporting import write_report_tree
 
@@ -59,7 +59,9 @@ class TradingAgentsGraph:
             callbacks: Optional list of callback handlers (e.g., for tracking LLM/tool stats)
         """
         self.debug = debug
-        self.config = config or DEFAULT_CONFIG
+        # A caller's config may name a market (e.g. "india") without its preset
+        # values; apply them here so every entry point reads the same config.
+        self.config = apply_market_preset(config or DEFAULT_CONFIG)
         self.callbacks = callbacks or []
 
         set_config(self.config)
@@ -171,6 +173,9 @@ class TradingAgentsGraph:
         PortfolioRating enum.
         """
         trade_date = _validate_trade_date(trade_date)
+        # A bare symbol takes the home market's suffix (RELIANCE -> RELIANCE.NS
+        # under market=india); the backtest resolves its grid the same way.
+        company_name = with_exchange_suffix(company_name, self.config.get("default_exchange_suffix"))
 
         with run_config(self.config), \
                 self.checkpoint_scope(company_name, trade_date, asset_type, portfolio) as thread_id_value:

@@ -65,10 +65,17 @@ _ALIASES = {
     "GER40": "^GDAXI", "GER30": "^GDAXI", "DE40": "^GDAXI",
     "UK100": "^FTSE", "JP225": "^N225", "JPN225": "^N225",
     "FRA40": "^FCHI", "EU50": "^STOXX50E", "HK50": "^HSI",
+    # Indian indices
+    "NIFTY": "^NSEI", "NIFTY50": "^NSEI", "SENSEX": "^BSESN",
+    "BANKNIFTY": "^NSEBANK", "NIFTYBANK": "^NSEBANK",
 }
 
 # HKEX codes as Yahoo spells them: the number zero-padded to 4 digits (#957).
 _HK_CODE = re.compile(r"^(\d{1,5})\.HK$")
+# A bare exchange-listed symbol: no suffix, index caret, future/forex marker.
+_BARE_SYMBOL = re.compile(r"^[A-Z0-9][A-Z0-9\-]*$")
+# Indian exchange suffixes; social feeds know these stocks by the bare symbol.
+_INDIAN_SUFFIXES = (".NS", ".BO")
 _SHANGHAI_SH = re.compile(r"^(\d{6})\.SH$")
 
 
@@ -142,6 +149,37 @@ def normalize_symbol(raw: str) -> str:
     if canonical != raw.strip().upper():
         logger.info("Resolved symbol %r to Yahoo symbol %r", raw, canonical)
     return canonical
+
+
+def with_exchange_suffix(raw: str, suffix: str | None) -> str:
+    """Canonical symbol for ``raw``, with ``suffix`` added when it is bare.
+
+    Lets a home-market user type ``RELIANCE`` for ``RELIANCE.NS``. With no
+    ``suffix`` the input is returned unchanged. A symbol that
+    already names its venue (``TCS.BO``, ``^NSEI``, ``GC=F``, ``EURUSD=X``) or is
+    crypto (``BTC-USD``) is left as :func:`normalize_symbol` resolves it.
+    """
+    if not suffix:
+        return raw  # no home market: the ticker is used exactly as given
+    canonical = normalize_symbol(raw)
+    if not isinstance(canonical, str) or not _BARE_SYMBOL.fullmatch(canonical):
+        return canonical
+    if crypto_base(canonical) is not None:
+        return canonical
+    return canonical + suffix.upper()
+
+
+def social_search_symbol(raw: str) -> str:
+    """The symbol people write in posts: ``BTC`` for ``BTC-USD``, ``RELIANCE``
+    for ``RELIANCE.NS``; anything else unchanged."""
+    base = crypto_base(raw)
+    if base:
+        return base
+    upper = raw.strip().upper()
+    for suffix in _INDIAN_SUFFIXES:
+        if upper.endswith(suffix) and len(upper) > len(suffix):
+            return upper[: -len(suffix)]
+    return raw
 
 
 # Tickers can contain letters, digits, dot, dash, underscore, caret

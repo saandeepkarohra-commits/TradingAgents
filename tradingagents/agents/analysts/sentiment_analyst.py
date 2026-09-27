@@ -5,7 +5,8 @@ prompt, so the model reports on data it was given rather than inventing posts:
 
   1. News headlines: Yahoo Finance
   2. StockTwits messages: the cashtag stream, with Bullish/Bearish tags
-  3. Reddit posts: r/wallstreetbets, r/stocks, r/investing
+  3. Reddit posts: the configured ``reddit_subreddits`` (r/wallstreetbets,
+     r/stocks, r/investing by default; Indian subreddits for market=india)
 
 Each source is trimmed to the analysis window. With a TypeSafe key, the social
 posts are screened by Jev first (see post_screen). These feeds serve recent items
@@ -31,6 +32,7 @@ from tradingagents.agents.structured import (
     invoke_structured_or_freetext,
 )
 from tradingagents.agents.tools import get_news
+from tradingagents.dataflows.config import get_config
 from tradingagents.dataflows.vendors.reddit import fetch_reddit_posts
 from tradingagents.dataflows.vendors.stocktwits import fetch_stocktwits_messages
 
@@ -65,7 +67,10 @@ def create_sentiment_analyst(llm):
         stocktwits_block = fetch_stocktwits_messages(
             ticker, limit=30, start_date=start_date, end_date=end_date, screen=screen
         )
-        reddit_block = fetch_reddit_posts(ticker, start_date=start_date, end_date=end_date, screen=screen)
+        reddit_block = fetch_reddit_posts(
+            ticker, get_config()["reddit_subreddits"],
+            start_date=start_date, end_date=end_date, screen=screen,
+        )
 
         system_message = _build_system_message(
             ticker=ticker,
